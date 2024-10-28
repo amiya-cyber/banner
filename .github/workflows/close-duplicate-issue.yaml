@@ -4,6 +4,9 @@ on:
   issues:
     types: [opened]
 
+permissions:
+  issues: write  # Ensure the workflow has permission to read and write issues
+
 jobs:
   limit-issues:
     runs-on: ubuntu-latest
@@ -13,6 +16,7 @@ jobs:
       uses: actions/github-script@v6
       with:
         script: |
+          // Get all open issues created by the user
           const issues = await github.issues.listForRepo({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -20,18 +24,18 @@ jobs:
             creator: context.payload.issue.user.login
           });
 
-          if (issues.data.length > 1) {
-            return true;
-          } else {
-            return false;
-          }
-        result-encoding: json
+          // Filter out the current issue from the list
+          const otherOpenIssues = issues.data.filter(issue => issue.number !== context.payload.issue.number);
+
+          // If there are other open issues, return true, else false
+          return otherOpenIssues.length > 0;
 
     - name: Close the issue if another issue is open
       if: steps.check_issues.outputs.result == 'true'
       uses: actions/github-script@v6
       with:
         script: |
+          // Close the newly created issue
           await github.issues.update({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -39,6 +43,7 @@ jobs:
             state: 'closed'
           });
 
+          // Leave a comment explaining why the issue is being closed
           await github.issues.createComment({
             owner: context.repo.owner,
             repo: context.repo.repo,
