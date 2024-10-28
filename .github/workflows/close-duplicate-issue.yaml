@@ -5,30 +5,42 @@ on:
     types: [opened]
 
 permissions:
-  issues: write  # Ensure the workflow has permission to read and write issues
+  issues: write  # Ensuring permission to update and close issues
 
 jobs:
   limit-issues:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
     - name: Check for existing open issues by the same user
       id: check_issues
       uses: actions/github-script@v6
       with:
         script: |
-          // Get all open issues created by the user
           const issues = await github.issues.listForRepo({
             owner: context.repo.owner,
             repo: context.repo.repo,
             state: 'open',
-            creator: context.payload.issue.user.login
+            creator: context.payload.issue.user.login,
           });
 
           // Filter out the current issue from the list
-          const otherOpenIssues = issues.data.filter(issue => issue.number !== context.payload.issue.number);
+          const otherOpenIssues = issues.data.filter(
+            issue => issue.number !== context.payload.issue.number
+          );
 
-          // If there are other open issues, return true, else false
-          return otherOpenIssues.length > 0;
+          // Debugging output
+          console.log("Other open issues by user:", otherOpenIssues.length);
+
+          // Set output based on whether there are other open issues
+          return otherOpenIssues.length > 0 ? 'true' : 'false';
+
+        result-encoding: string  # Make sure we output a string
+
+    - name: Debug Output
+      run: echo "Check issues result: ${{ steps.check_issues.outputs.result }}"
 
     - name: Close the issue if another issue is open
       if: steps.check_issues.outputs.result == 'true'
@@ -40,7 +52,7 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: context.issue.number,
-            state: 'closed'
+            state: 'closed',
           });
 
           // Leave a comment explaining why the issue is being closed
@@ -48,5 +60,5 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: context.issue.number,
-            body: 'You already have an open issue. Please resolve or close your existing issue before raising another one.'
+            body: 'You already have an open issue. Please resolve or close your existing issue before raising another one.',
           });
