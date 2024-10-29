@@ -1,32 +1,53 @@
-name: Duplicate Issue Detector
+name: Check for Duplicate Issues
 
 on:
   issues:
     types: [opened]
 
 jobs:
-  detect-duplicate:
+  check_duplicate:
     runs-on: ubuntu-latest
+
     steps:
-
       - name: Check out repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Detect duplicate issues
-        id: detect
-        uses: actions-cool/issues-similarity-analysis@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.event.repository.name }}
-          threshold: 0.7 # Similarity threshold; adjust as needed
-          label: duplicate
-          close: true
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Comment on Duplicate Issue
-        if: steps.detect.outputs.duplicate == 'true'
+      - name: Search for existing issues
+        id: search_issues
         run: |
-          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
-            -d '{"body": "This issue is a duplicate of #${{ steps.detect.outputs.original_issue_number }}. Please refer to the original issue for updates."}'
+          # URL encode the issue title (replace spaces with %20)
+          issue_title=$(echo "${{ github.event.issue.title }}" | sed 's/ /%20/g')
+          # Search for issues with a similar title
+          existing_issues=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/search/issues?q=repo:${{ github.repository }}+type:issue+state:open+${issue_title}")
+          # Extract issue numbers from the search result
+          echo "$existing_issues" | jq -r '.items[] | .number' > issue_numbers.txt
+      - name: Check if a duplicate exists
+        id: check_duplicate
+        run: |
+          issue_count=$(wc -l < issue_numbers.txt)
+          if [ "$issue_count" -gt 0 ]; then
+            echo "Duplicate issue(s) found."
+            exit 0
+          else
+            echo "No duplicates found."
+            exit 1
+          fi
+      - name: Comment and close the new issue if duplicate exists
+        if: steps.check_duplicate.outcome == 'success'
+        run: |
+          issue_numbers=$(cat issue_numbers.txt | tr '\n' ', ' | sed 's/, $//')
+          existing_issue=$(head -n 1 issue_numbers.txt)
+          # Comment on the new issue
+          curl -s -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d "{\"body\": \"Thanks for raising this issue! However, we believe a similar issue already exists. Kindly go through all the open issues and ask to be assigned to that issue.\"}" \
+          "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments"
+          # Close the new issue
+          curl -s -X PATCH -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{"state": "closed"}' \
+          "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}"
