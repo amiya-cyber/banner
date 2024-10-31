@@ -1,36 +1,38 @@
-name: Issue Labeler
+name: Auto Label Issue
 
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, reopened, edited]
 
 jobs:
-  manage-labels:
+  label_issue:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Create or Update Labels
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          curl -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/labels \
-            -d '{
-              "name": "Review Queeued",
-              "color": "#ffae00",
-              
-            }'
-          
-      - name: Add Labels to Issue
-        uses: actions-ecosystem/action-add-labels@v1
+      - name: Label Issue
+        uses: actions/github-script@v6
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: |
-            Review Queued
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const issue = context.payload.issue;
+            const issueBody = issue.body ? issue.body.toLowerCase() : '';
+            const issueTitle = issue.title.toLowerCase();
             
-Footer
-© 2024 Git
+            // Add gssoc label to all issues
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              labels: ['gssoc-ext','hacktoberfest-accepted']
+              color:#ffae00
+            });
+            const addLabel = async (label) => {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: [label]
+              });
+            };
+           
