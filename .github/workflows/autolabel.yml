@@ -25,7 +25,6 @@ jobs:
               repo: context.repo.repo,
               issue_number: issue.number,
               labels: ['gssoc-ext','hacktoberfest-accepted']
-              color:#ffae00
             });
             const addLabel = async (label) => {
               await github.rest.issues.addLabels({
