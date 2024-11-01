@@ -1,7 +1,10 @@
 
 name: 📝 Documentation Update
 description: Improve Documentation
-title: "📝[documentation Update]: "
+title: "[Doc]: "
+labels: [documentation]
+
+
 body:
   - type: checkboxes
     id: existing-issue
@@ -11,6 +14,8 @@ body:
       options:
         - label: I have searched the existing issues
           required: true
+          
+
   - type: textarea
     id: issue-description
     attributes:
@@ -19,6 +24,8 @@ body:
       placeholder: Describe the improvement or correction you'd like to see in the documentation.
     validations:
       required: true
+      
+
   - type: textarea
     id: suggested-change
     attributes:
@@ -27,6 +34,8 @@ body:
       placeholder: Explain how the documentation should be updated or corrected.
     validations:
       required: true
+      
+
   - type: textarea
     id: rationale
     attributes:
@@ -34,7 +43,9 @@ body:
       description: Why is this documentation update necessary or beneficial?
       placeholder: Explain the importance or reasoning behind the suggested change.
     validations:
-      required: False
+      required: false
+      
+
   - type: dropdown
     id: urgency
     attributes:
@@ -47,14 +58,20 @@ body:
       default: 0
     validations:
       required: true
+      
+
   - type: checkboxes
     id: terms
     attributes:
-      label: Record
+      label: Acknowledgements
+      description: Ensure you have read and agree to the project's guidelines.
       options:
-        - label: "I have read the Contributing Guidelines"
+        - label: I'm a GSSOC'24-Extd contributor
+        - label: I'm a Hacktoberfest contributor
+        - label: I have starred the repository
           required: true
-        - label: "I'm a GSSOC'24EXTD contributor"
-          required: true
-        - label: "I have starred the repository"
-          required: true
+        - label: 'I am willing to work on this issue (optional)'
+          required: false
+        
+        
+    
